@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rev - Revolt Motors Voice Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logo {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #00d4ff;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .subtitle {
+            color: #aaa;
+            font-size: 1.1em;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        .voice-visualizer {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.3) 0%, rgba(0, 212, 255, 0.1) 70%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(0, 212, 255, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .voice-visualizer.active {
+            transform: scale(1.1);
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.6);
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.5) 0%, rgba(0, 212, 255, 0.2) 70%);
+        }
+
+        .voice-visualizer.listening {
+            animation: pulse 2s infinite;
+            background: radial-gradient(circle, rgba(255, 69, 0, 0.5) 0%, rgba(255, 69, 0, 0.2) 70%);
+            border-color: rgba(255, 69, 0, 0.5);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .mic-icon {
+            font-size: 4em;
+            color: #00d4ff;
+            transition: all 0.3s ease;
+        }
+
+        .voice-visualizer.listening .mic-icon {
+            color: #ff4500;
+        }
+
+        .status {
+            text-align: center;
+            font-size: 1.3em;
+            margin-bottom: 30px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 150px;
+            justify-content: center;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #ff4500, #cc3300);
+            color: white;
+        }
+
+        .btn-tertiary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .connection-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-size: 0.9em;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff4500;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot.connected {
+            background: #00ff00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .audio-bars {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            position: absolute;
+            bottom: 20px;
+        }
+
+        .bar {
+            width: 4px;
+            background: #00d4ff;
+            border-radius: 2px;
+            transition: all 0.1s ease;
+        }
+
+        @keyframes audioWave {
+            0%, 100% { height: 10px; }
+            50% { height: 30px; }
+        }
+
+        .bar.active:nth-child(1) { animation: audioWave 1s infinite; }
+        .bar.active:nth-child(2) { animation: audioWave 1s infinite 0.1s; }
+        .bar.active:nth-child(3) { animation: audioWave 1s infinite 0.2s; }
+        .bar.active:nth-child(4) { animation: audioWave 1s infinite 0.3s; }
+        .bar.active:nth-child(5) { animation: audioWave 1s infinite 0.4s; }
+
+        .error-message {
+            background: rgba(255, 69, 0, 0.2);
+            border: 1px solid rgba(255, 69, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .voice-visualizer {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .mic-icon {
+                font-size: 3em;
+            }
+            
+            .controls {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="connection-status">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="connectionText">Connecting...</span>
+        </div>
+
+        <div class="header">
+            <div class="logo">REV</div>
+            <div class="subtitle">Revolt Motors Voice Assistant</div>
+        </div>
+
+        <div class="chat-container">
+            <div class="voice-visualizer" id="visualizer">
+                <div class="mic-icon">🎤</div>
+                <div class="audio-bars">
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                </div>
+            </div>
+
+            <div class="status" id="status">
+                Click "Start Conversation" to begin talking with Rev
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" id="startBtn">
+                    ▶️ Start Conversation
+                </button>
+                <button class="btn btn-secondary" id="interruptBtn" disabled>
+                    ⏸️ Interrupt
+                </button>
+                <button class="btn btn-tertiary" id="resetBtn">
+                    🔄 Reset
+                </button>
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        class VoiceAssistant {
+            constructor() {
+                this.socket = io();
+                this.isListening = false;
+                this.isSpeaking = false;
+                this.isConnected = false;
+                this.recognition = null;
+                this.synthesis = window.speechSynthesis;
+                this.currentUtterance = null;
+                
+                this.initElements();
+                this.initSocket();
+                this.initSpeechRecognition();
+                this.checkBrowserSupport();
+            }
+
+            initElements() {
+                this.startBtn = document.getElementById('startBtn');
+                this.interruptBtn = document.getElementById('interruptBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.status = document.getElementById('status');
+                this.visualizer = document.getElementById('visualizer');
+                this.statusDot = document.getElementById('statusDot');
+                this.connectionText = document.getElementById('connectionText');
+                this.errorMessage = document.getElementById('errorMessage');
+
+                this.startBtn.addEventListener('click', () => this.startConversation());
+                this.interruptBtn.addEventListener('click', () => this.interrupt());
+                this.resetBtn.addEventListener('click', () => this.reset());
+            }
+
+            initSocket() {
+                this.socket.on('connect', () => {
+                    this.isConnected = true;
+                    this.updateConnectionStatus(true);
+                });
+
+                this.socket.on('disconnect', () => {
+                    this.isConnected = false;
+                    this.updateConnectionStatus(false);
+                });
+
+                this.socket.on('text-response', (response) => {
+                    this.handleTextResponse(response);
+                });
+
+                this.socket.on('conversation-reset', () => {
+                    this.updateStatus("Conversation reset. Ready to start fresh!");
+                });
+
+                this.socket.on('error', (error) => {
+                    this.showError("Server error: " + error);
+                });
+            }
+
+            initSpeechRecognition() {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    
+                    this.recognition.continuous = true;
+                    this.recognition.interimResults = false;
+                    this.recognition.lang = 'en-US';
+                    
+                    this.recognition.onstart = () => {
+                        console.log('🎤 Speech recognition started');
+                        this.visualizer.classList.add('listening');
+                        this.startAudioVisualization();
+                    };
+                    
+                    this.recognition.onresult = (event) => {
+                        let finalTranscript = '';
+                        
+                        for (let i = event.resultIndex; i < event.results.length; i++) {
+                            if (event.results[i].isFinal) {
+                                finalTranscript += event.results[i][0].transcript;
+                            }
+                        }
+                        
+                        if (finalTranscript.trim()) {
+                            console.log('📝 User said:', finalTranscript);
+                            this.updateStatus(`You said: "${finalTranscript}"`);
+                            this.sendTextMessage(finalTranscript.trim());
+                        }
+                    };
+                    
+                    this.recognition.onerror = (event) => {
+                        console.error('❌ Speech recognition error:', event.error);
+                        if (event.error === 'not-allowed') {
+                            this.showError('Microphone access denied. Please allow microphone access.');
+                        } else if (event.error === 'no-speech') {
+                            this.updateStatus('No speech detected. Try speaking again...');
+                            // Restart recognition if no speech detected
+                            setTimeout(() => {
+                                if (this.isListening) {
+                                    this.recognition.start();
+                                }
+                            }, 1000);
+                        } else {
+                            this.showError('Speech recognition error: ' + event.error);
+                        }
+                    };
+                    
+                    this.recognition.onend = () => {
+                        console.log('🎤 Speech recognition ended');
+                        if (this.isListening && !this.isSpeaking) {
+                            // Restart recognition if we're still supposed to be listening
+                            setTimeout(() => {
+                                if (this.isListening) {
+                                    this.recognition.start();
+                                }
+                            }, 500);
+                        }
+                    };
+                } else {
+                    this.showError('Speech recognition not supported in this browser. Please use Chrome or Edge.');
+                }
+            }
+
+            checkBrowserSupport() {
+                if (!this.recognition) {
+                    this.startBtn.disabled = true;
+                    this.showError('Speech recognition not supported. Please use Chrome or Edge browser.');
+                    return;
+                }
+                
+                if (!this.synthesis) {
+                    this.showError('Text-to-speech not supported in this browser.');
+                    return;
+                }
+                
+                this.updateStatus("Ready! Click 'Start Conversation' to begin talking with Rev");
+            }
+
+            updateConnectionStatus(connected) {
+                if (connected) {
+                    this.statusDot.classList.add('connected');
+                    this.connectionText.textContent = 'Connected';
+                } else {
+                    this.statusDot.classList.remove('connected');
+                    this.connectionText.textContent = 'Disconnected';
+                }
+            }
+
+            updateStatus(message) {
+                this.status.textContent = message;
+            }
+
+            showError(message) {
+                this.errorMessage.textContent = message;
+                this.errorMessage.style.display = 'block';
+                setTimeout(() => {
+                    this.errorMessage.style.display = 'none';
+                }, 5000);
+            }
+
+            startConversation() {
+                if (!this.isConnected) {
+                    this.showError("Not connected to server. Please wait and try again.");
+                    return;
+                }
+
+                if (!this.recognition) {
+                    this.showError("Speech recognition not available.");
+                    return;
+                }
+
+                this.isListening = true;
+                this.startBtn.disabled = true;
+                this.interruptBtn.disabled = false;
+                
+                this.updateStatus("Listening... Ask me anything about Revolt Motors!");
+                
+                try {
+                    this.recognition.start();
+                } catch (error) {
+                    console.error('❌ Error starting recognition:', error);
+                    this.showError('Failed to start speech recognition');
+                }
+            }
+
+            sendTextMessage(text) {
+                if (!this.isConnected) {
+                    this.showError("Not connected to server.");
+                    return;
+                }
+                
+                this.visualizer.classList.remove('listening');
+                this.visualizer.classList.add('active');
+                this.updateStatus("Rev is thinking...");
+                
+                this.socket.emit('text-message', text);
+            }
+
+            handleTextResponse(responseText) {
+                console.log('📥 Received response:', responseText);
+                this.updateStatus(`Rev: ${responseText}`);
+                this.speakResponse(responseText);
+            }
+
+            speakResponse(text) {
+                // Stop any current speech
+                this.synthesis.cancel();
+                
+                this.currentUtterance = new SpeechSynthesisUtterance(text);
+                this.currentUtterance.rate = 1.0;
+                this.currentUtterance.pitch = 1.0;
+                this.currentUtterance.volume = 1.0;
+                
+                // Try to use a more natural voice if available
+                const voices = this.synthesis.getVoices();
+                const preferredVoice = voices.find(voice => 
+                    voice.name.includes('Google') && voice.lang.startsWith('en')
+                ) || voices.find(voice => voice.lang.startsWith('en'));
+                
+                if (preferredVoice) {
+                    this.currentUtterance.voice = preferredVoice;
+                }
+                
+                this.currentUtterance.onstart = () => {
+                    this.isSpeaking = true;
+                    console.log('🔊 Started speaking');
+                    this.visualizer.classList.remove('listening');
+                    this.visualizer.classList.add('active');
+                };
+                
+                this.currentUtterance.onend = () => {
+                    this.isSpeaking = false;
+                    console.log('🔊 Finished speaking');
+                    this.visualizer.classList.remove('active');
+                    
+                    if (this.isListening) {
+                        this.visualizer.classList.add('listening');
+                        this.updateStatus("Listening... Continue the conversation!");
+                    }
+                };
+                
+                this.currentUtterance.onerror = (event) => {
+                    console.error('❌ Speech synthesis error:', event.error);
+                    this.isSpeaking = false;
+                };
+                
+                this.synthesis.speak(this.currentUtterance);
+            }
+
+            interrupt() {
+                // Stop current speech
+                if (this.synthesis.speaking) {
+                    this.synthesis.cancel();
+                    this.isSpeaking = false;
+                }
+                
+                this.updateStatus("Interrupted. What would you like to know?");
+                this.visualizer.classList.remove('active');
+                
+                if (this.isListening) {
+                    this.visualizer.classList.add('listening');
+                }
+            }
+
+            reset() {
+                // Stop everything
+                this.isListening = false;
+                this.isSpeaking = false;
+                
+                if (this.recognition) {
+                    this.recognition.stop();
+                }
+                
+                if (this.synthesis.speaking) {
+                    this.synthesis.cancel();
+                }
+
+                this.startBtn.disabled = false;
+                this.interruptBtn.disabled = true;
+                this.visualizer.classList.remove('listening', 'active');
+                this.stopAudioVisualization();
+                
+                // Reset conversation on server
+                this.socket.emit('reset-conversation');
+                
+                this.updateStatus("Click 'Start Conversation' to begin talking with Rev");
+            }
+
+            startAudioVisualization() {
+                const bars = document.querySelectorAll('.bar');
+                bars.forEach(bar => bar.classList.add('active'));
+            }
+
+            stopAudioVisualization() {
+                const bars = document.querySelectorAll('.bar');
+                bars.forEach(bar => bar.classList.remove('active'));
+            }
+        }
+
+        // Initialize the voice assistant when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new VoiceAssistant();
+        });
+    </script>(arrayBuffer)));
+                    this.socket.emit('audio-data', base64);
+                };
+                reader.readAsArrayBuffer(audioBlob);
+            }
+
+            interrupt() {
+                if (this.currentAudio) {
+                    this.currentAudio.pause();
+                    this.currentAudio = null;
+                }
+                
+                this.socket.emit('interrupt');
+                this.updateStatus("Interrupted. Listening for your next question...");
+                this.visualizer.classList.remove('active');
+                this.visualizer.classList.add('listening');
+            }
+
+            reset() {
+                if (this.mediaRecorder && this.isRecording) {
+                    this.mediaRecorder.stop();
+                    this.isRecording = false;
+                }
+
+                if (this.audioStream) {
+                    this.audioStream.getTracks().forEach(track => track.stop());
+                    this.audioStream = null;
+                }
+
+                if (this.currentAudio) {
+                    this.currentAudio.pause();
+                    this.currentAudio = null;
+                }
+
+                this.startBtn.disabled = false;
+                this.interruptBtn.disabled = true;
+                this.visualizer.classList.remove('listening', 'active');
+                this.updateStatus("Click 'Start Conversation' to begin talking with Rev");
+                this.stopAudioVisualization();
+            }
+
+            handleGeminiResponse(response) {
+                console.log('Gemini response:', response);
+
+                if (response.serverContent && response.serverContent.modelTurn) {
+                    const parts = response.serverContent.modelTurn.parts;
+                    
+                    for (const part of parts) {
+                        if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
+                            this.playAudio(part.inlineData.data);
+                        }
+                        
+                        if (part.text) {
+                            this.updateStatus(`Rev: ${part.text}`);
+                        }
+                    }
+                }
+
+                if (response.serverContent && response.serverContent.turnComplete) {
+                    this.updateStatus("Response complete. Continue speaking or click interrupt to ask something else.");
+                    this.visualizer.classList.remove('active');
+                    this.visualizer.classList.add('listening');
+                }
+            }
+
+            playAudio(base64Audio) {
+                try {
+                    const audioData = atob(base64Audio);
+                    const audioBytes = new Uint8Array(audioData.length);
+                    for (let i = 0; i < audioData.length; i++) {
+                        audioBytes[i] = audioData.charCodeAt(i);
+                    }
+
+                    const audioBlob = new Blob([audioBytes], { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    
+                    this.currentAudio = new Audio(audioUrl);
+                    
+                    this.currentAudio.onplay = () => {
+                        this.updateStatus("Rev is speaking...");
+                        this.visualizer.classList.remove('listening');
+                        this.visualizer.classList.add('active');
+                    };
+
+                    this.currentAudio.onended = () => {
+                        URL.revokeObjectURL(audioUrl);
+                        this.visualizer.classList.remove('active');
+                        this.visualizer.classList.add('listening');
+                        this.updateStatus("Listening... Continue the conversation!");
+                    };
+
+                    this.currentAudio.play();
+
+                } catch (error) {
+                    console.error('Error playing audio:', error);
+                    this.showError("Error playing audio response");
+                }
+            }
+
+            startAudioVisualization() {
+                const bars = document.querySelectorAll('.bar');
+                bars.forEach(bar => bar.classList.add('active'));
+            }
+
+            stopAudioVisualization() {
+                const bars = document.querySelectorAll('.bar');
+                bars.forEach(bar => bar.classList.remove('active'));
+            }
+        }
+
+        // Initialize the voice assistant when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new VoiceAssistant();
+        });
+    </script>
+</body>
+</html>
